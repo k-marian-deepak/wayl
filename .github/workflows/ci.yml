@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # actions/checkout@v4.1.7
+        uses: actions/checkout@4 # actions/checkout@v4.1.7
 
       - name: Set up Python
-        uses: actions/setup-python@0b93645e5eda73146e37a051d36d7e108e45403e # actions/setup-python@v5.1.1
+        uses: actions/setup-python@5 # actions/setup-python@v5.1.1
         with:
           python-version: '3.10'
           cache: 'pip'
@@ -41,16 +41,16 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # actions/checkout@v4.1.7
+        uses: actions/checkout@4 # actions/checkout@v4.1.7
 
       - name: Set up Node.js
-        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # actions/setup-node@v4.0.3
+        uses: actions/setup-node@4 # actions/setup-node@v4.0.3
         with:
           node-version: 20
 
       - name: Cache Node Modules
         id: node-cache
-        uses: actions/cache@0c45773b623bea8c8e55f6efb8397074f8b51102 # actions/cache@v4.0.2
+        uses: actions/cache@4 # actions/cache@v4.0.2
         with:
           path: frontend/node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('frontend/package.json') }}
