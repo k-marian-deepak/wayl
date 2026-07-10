@@ -19,7 +19,7 @@ export default function RecentlySearched({ recentSearches, theme, onSelectCity }
         {recentSearches.map((item, index) => (
           <button
             key={index}
-            onClick={() => onSelectCity(null, null, item.name)}
+            onClick={() => onSelectCity(item.lat, item.lon, item.name)}
             className="w-full flex items-center justify-between transition-all duration-500 text-left group cursor-pointer bg-transparent border-0 p-0"
           >
             <div className="flex items-center gap-3">

@@ -8,6 +8,9 @@ import WeeklyForecast from './components/WeeklyForecast';
 import LiveConditions from './components/LiveConditions';
 import RecentlySearched from './components/RecentlySearched';
 import WindMap from './components/WindMap';
+import { fetchWeatherDirect, searchCitiesDirect } from './utils/weatherApi';
+
+const BACKEND_URL = 'http://localhost:8080';
 
 export default function App() {
   const [weather, setWeather] = useState(null);
@@ -16,27 +19,45 @@ export default function App() {
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [isBackendAlive, setIsBackendAlive] = useState(false);
   const [recentSearches, setRecentSearches] = useState([
-    { name: 'Liverpool, UK', temp: 16, code: 2 },
-    { name: 'Palermo, Italy', temp: -2, code: 95 }
+    { name: 'Liverpool, UK', temp: 16, code: 2, lat: 53.4084, lon: -2.9916 },
+    { name: 'Palermo, Italy', temp: -2, code: 95, lat: 38.1157, lon: 13.3614 }
   ]);
 
-  // Fetch weather data from backend
+  // Fetch weather data with backend-first, client-side fallback
   const fetchWeather = async (lat = null, lon = null, name = '') => {
     setLoading(true);
     try {
-      let url = 'http://localhost:8080/api/weather';
-      if (lat !== null && lon !== null) {
-        url += `?lat=${lat}&lon=${lon}`;
-        if (name) {
-          url += `&location_name=${encodeURIComponent(name)}`;
+      let data = null;
+      const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+      if (isLocalhost && isBackendAlive) {
+        try {
+          let url = `${BACKEND_URL}/api/weather`;
+          if (lat !== null && lon !== null) {
+            url += `?lat=${lat}&lon=${lon}`;
+            if (name) {
+              url += `&location_name=${encodeURIComponent(name)}`;
+            }
+          } else if (name) {
+            url += `?location_name=${encodeURIComponent(name)}`;
+          }
+
+          const response = await fetch(url);
+          if (response.ok) {
+            data = await response.json();
+          }
+        } catch (err) {
+          console.warn("Backend offline, falling back to direct client-side fetch", err);
         }
-      } else if (name) {
-        url += `?location_name=${encodeURIComponent(name)}`;
       }
 
-      const response = await fetch(url);
-      const data = await response.json();
+      // Fallback if not on localhost or if backend fetch failed/timed out
+      if (!data) {
+        data = await fetchWeatherDirect(lat, lon, name);
+      }
+
       setWeather(data);
 
       // If we did a search, add it to recent searches list if not already present
@@ -44,8 +65,13 @@ export default function App() {
         setRecentSearches(prev => {
           const exists = prev.some(item => item.name.toLowerCase() === name.toLowerCase());
           if (exists) return prev;
-          // Keep top 3
-          return [{ name: data.location, temp: data.temp, code: data.hourly[0]?.code || 0 }, ...prev.slice(0, 2)];
+          return [{
+            name: data.location,
+            temp: data.temp,
+            code: data.hourly[0]?.code || 0,
+            lat: data.lat,
+            lon: data.lon
+          }, ...prev.slice(0, 2)];
         });
       }
     } catch (error) {
@@ -55,12 +81,33 @@ export default function App() {
     }
   };
 
+  // Probe backend aliveness on start
+  useEffect(() => {
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (!isLocalhost) return;
+
+    const probeBackend = async () => {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 300);
+        const response = await fetch(`${BACKEND_URL}/`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (response.ok) {
+          setIsBackendAlive(true);
+        }
+      } catch (e) {
+        console.info("Local backend down. Running fully client-side.");
+      }
+    };
+    probeBackend();
+  }, []);
+
   // Initial load
   useEffect(() => {
     fetchWeather(40.6782, -73.9442, 'Brooklyn, New York, USA');
-  }, []);
+  }, [isBackendAlive]); // Re-fetch once backend status is probed
 
-  // Fetch search suggestions
+  // Fetch search suggestions with backend-first, client-side fallback
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
       setSearchResults([]);
@@ -70,8 +117,24 @@ export default function App() {
     const delayDebounceFn = setTimeout(async () => {
       setSearching(true);
       try {
-        const response = await fetch(`http://localhost:8080/api/search?q=${encodeURIComponent(searchQuery)}`);
-        const data = await response.json();
+        let data = null;
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        if (isLocalhost && isBackendAlive) {
+          try {
+            const response = await fetch(`${BACKEND_URL}/api/search?q=${encodeURIComponent(searchQuery)}`);
+            if (response.ok) {
+              data = await response.json();
+            }
+          } catch (err) {
+            console.warn("Backend offline, falling back to direct client-side search", err);
+          }
+        }
+
+        if (!data) {
+          data = await searchCitiesDirect(searchQuery);
+        }
+
         setSearchResults(data);
         setShowSearchDropdown(true);
       } catch (error) {
@@ -82,7 +145,7 @@ export default function App() {
     }, 450);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery]);
+  }, [searchQuery, isBackendAlive]);
 
   const handleSelectCity = (city) => {
     setSearchQuery('');
@@ -131,7 +194,7 @@ export default function App() {
             <RecentlySearched
               recentSearches={recentSearches}
               theme={theme}
-              onSelectCity={(lat, lon, name) => fetchWeather(null, null, name)}
+              onSelectCity={(lat, lon, name) => fetchWeather(lat, lon, name)}
             />
             <WindMap
               weather={weather}
