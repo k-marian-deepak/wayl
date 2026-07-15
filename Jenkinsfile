@@ -19,8 +19,9 @@ pipeline {
                 // Navigate into the frontend folder and run the build scripts
                 dir('frontend') {
                     echo 'Installing node modules...'
-                    sh 'npm install'
-
+		    // --prefered-offline forces npm to use the local npm cache by the agent/slave rather than pinging the online server for updates
+                    sh 'npm install --prefer-offline'
+                    
                     echo 'Compiling static bundle...'
                     sh 'npm run build'
                 }
