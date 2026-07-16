@@ -86,3 +86,24 @@ The frontend is a React application styled with Tailwind CSS, utilizing Vite for
 
 - **Frontend**: React 18, Vite, Tailwind CSS, Lucide Icons, Leaflet (Map Container), Recharts (Live Curve)
 - **Backend**: FastAPI, Uvicorn, HTTPX (async fetching), Requests
+
+---
+
+## ⚙️ CI/CD Pipeline (Jenkins)
+
+The project includes a `Jenkinsfile` to automate building, archiving, and deploying.
+
+### Branch & Pull Request Rules
+The pipeline compiles code on any push or pull request event, managing deployments and checks dynamically:
+* **`main`**: Automated production build, archive, and deployment.
+* **`fix-*` (e.g., `fix-build-permissions`)**: Wildcard hotfix branches. Builds are compiled, archived, and deployed for staging validation.
+* **Pull Requests (PRs)**: Automatically triggers the **PR Merge Verification** stage to validate pre-merge safety, compiling and archiving the code. The `Deploy` stage is safely disabled for PR previews to ensure code is only deployed once it is formally merged into the target branch.
+* **Other Development Branches**: Full compilation and archiving to verify syntax correctness, skipping the validation and deployment stages.
+
+### Pipeline Stages
+1. **Checkout**: Pulls the active branch or the PR merge preview commit from Git.
+2. **Build Frontend**: Navigates to `/frontend`, runs `npm install` (with local offline caching), and builds the static assets.
+3. **Archive Build Artifacts**: Saves the `frontend/dist/` build output inside the Jenkins build history for access.
+4. **PR Merge Verification**: Runs only when a Pull Request is opened or updated, printing metadata about the source/target branches and verifying integration.
+5. **Deploy**: Runs for `main` and `fix-*` branches (excluding pull request previews) to deploy compiled files.
+

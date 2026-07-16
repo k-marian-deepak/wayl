@@ -34,5 +34,40 @@ pipeline {
                 archiveArtifacts artifacts: 'frontend/dist/**/*', onlyIfSuccessful: true
             }
         }
+
+        stage('PR Merge Verification') {
+            when {
+                // Only run this stage when building a Pull Request (PR)
+                changeRequest()
+            }
+            steps {
+                echo "Verifying PR #${env.CHANGE_ID}: ${env.CHANGE_TITLE}"
+                echo "Source branch: ${env.CHANGE_BRANCH} -> Target branch: ${env.CHANGE_TARGET}"
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                allOf {
+                    anyOf {
+                        // Execute this stage if branch is 'main' OR matches 'fix-*'
+                        branch 'main'
+                        branch 'fix-*'
+                    }
+                    // Exclude pull request builds (only deploy on actual branch pushes/merges)
+                    not { changeRequest() }
+                }
+            }
+            steps {
+                echo "Running deployment steps for branch ${env.BRANCH_NAME}..."
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Skipping automatic workspace cleanup...'
+            // cleanWs()
+        }
     }
 }
