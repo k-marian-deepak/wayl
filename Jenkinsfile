@@ -1,10 +1,10 @@
 pipeline {
     agent any
 
-    // Use the Node.js tool configuration defined in the Jenkins Global Tool Configuration
-    // tools {
-    //    nodejs 'node22'
-    // }
+    environment {
+        // Redirect home directory to the workspace to avoid permission issues with /home/jenkins
+        HOME = "${WORKSPACE}"
+    }
 
     stages {
         stage('Checkout') {
