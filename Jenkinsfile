@@ -3,7 +3,7 @@ pipeline {
 
     // Use the Node.js tool configuration defined in the Jenkins Global Tool Configuration
     tools {
-        nodejs 'Node22'
+        nodejs 'node22'
     }
 
     stages {
