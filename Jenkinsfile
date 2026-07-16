@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     // Use the Node.js tool configuration defined in the Jenkins Global Tool Configuration
-    tools {
-        nodejs 'node22'
-    }
+    // tools {
+    //    nodejs 'node22'
+    // }
 
     stages {
         stage('Checkout') {
