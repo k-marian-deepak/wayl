@@ -45,14 +45,16 @@ pipeline {
                 }
             }
             steps {
-                // Read the commit message to see if it was a PR merge
                 script {
                     def commitMessage = sh(script: 'git log -1 --pretty=%B', returnStdout: true).trim()
+                    def commitHash = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    
                     if (commitMessage.contains('Merge pull request')) {
                         echo "🎉 A PULL REQUEST WAS MERGED INTO MAIN!"
+                        echo "Commit Hash: [${commitHash}]"
                         echo "Commit Message: ${commitMessage}"
                     } else {
-                        echo "🚀 Direct commit pushed to main: ${commitMessage}"
+                        echo "🚀 Direct commit pushed to main [${commitHash}]: ${commitMessage}"
                     }
                 }
             }
