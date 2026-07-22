@@ -53,6 +53,7 @@ pipeline {
                         // Execute this stage if branch is 'main' OR matches 'fix-*'
                         branch 'main'
                         branch 'fix-*'
+                        branch 'doc-*'
                     }
                     // Exclude pull request builds (only deploy on actual branch pushes/merges)
                     not { changeRequest() }
