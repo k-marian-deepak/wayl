@@ -2,24 +2,26 @@ pipeline {
     agent any
 
     environment {
-        // Redirect home directory to the workspace to avoid permission issues with /home/jenkins
         HOME = "${WORKSPACE}"
     }
 
     stages {
-        stage('Checkout') {
+        // Stage 1: Triggers ONLY when an open Pull Request is raised/updated
+        stage('PR Raised Notification') {
+            when {
+                changeRequest() // Matches active PR builds
+            }
             steps {
-                // Checkout code from Git repository
-                checkout scm
+                echo "📢 A PR HAS BEEN RAISED!"
+                echo "PR #${env.CHANGE_ID}: ${env.CHANGE_TITLE}"
+                echo "Source: ${env.CHANGE_BRANCH} ➔ Target: ${env.CHANGE_TARGET}"
             }
         }
 
         stage('Build Frontend') {
             steps {
-                // Navigate into the frontend folder and run the build scripts
                 dir('frontend') {
                     echo 'Installing node modules...'
-		    // --prefered-offline forces npm to use the local npm cache by the agent/slave rather than pinging the online server for updates
                     sh 'npm install --prefer-offline --fetch-timeout=600000'
                     
                     echo 'Compiling static bundle...'
@@ -30,19 +32,29 @@ pipeline {
 
         stage('Archive Build Artifacts') {
             steps {
-                // Archive the generated static HTML/CSS/JS build files so you can download them from the Jenkins UI
                 archiveArtifacts artifacts: 'frontend/dist/**/*', onlyIfSuccessful: true
             }
         }
 
-        stage('PR Merge Verification') {
+        // Stage 2: Triggers ONLY when code is merged into main (or pushed directly)
+        stage('PR Merged Notification') {
             when {
-                // Only run this stage when building a Pull Request (PR)
-                changeRequest()
+                allOf {
+                    branch 'main'
+                    not { changeRequest() } // Excludes open PRs targeting main
+                }
             }
             steps {
-                echo "Verifying PR #${env.CHANGE_ID}: ${env.CHANGE_TITLE}"
-                echo "Source branch: ${env.CHANGE_BRANCH} -> Target branch: ${env.CHANGE_TARGET}"
+                // Read the commit message to see if it was a PR merge
+                script {
+                    def commitMessage = sh(script: 'git log -1 --pretty=%B', returnStdout: true).trim()
+                    if (commitMessage.contains('Merge pull request')) {
+                        echo "🎉 A PULL REQUEST WAS MERGED INTO MAIN!"
+                        echo "Commit Message: ${commitMessage}"
+                    } else {
+                        echo "🚀 Direct commit pushed to main: ${commitMessage}"
+                    }
+                }
             }
         }
 
@@ -50,12 +62,10 @@ pipeline {
             when {
                 allOf {
                     anyOf {
-                        // Execute this stage if branch is 'main' OR matches 'fix-*'
                         branch 'main'
                         branch 'fix-*'
                         branch 'doc-*'
                     }
-                    // Exclude pull request builds (only deploy on actual branch pushes/merges)
                     not { changeRequest() }
                 }
             }
@@ -68,7 +78,6 @@ pipeline {
     post {
         always {
             echo 'Skipping automatic workspace cleanup...'
-            // cleanWs()
         }
     }
 }
